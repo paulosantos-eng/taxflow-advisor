@@ -11,6 +11,7 @@ import {
 import { MetricCard } from "@/components/metric-card";
 import { PositionsTable } from "@/components/positions-table";
 import { OpportunityCard } from "@/components/opportunity-card";
+import { DecompositionAuditable } from "@/components/decomposition-auditable";
 import { ArrowLeft, Calculator, Calendar, FileText, User, Building2 } from "lucide-react";
 
 export async function generateStaticParams() {
@@ -160,21 +161,24 @@ export default function ClientPage({ params }: PageProps) {
 
       {/* Painel principal — 2 colunas */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* Decomposição do IR */}
+        {/* Decomposicao do IR - AUDITAVEL */}
         <div className="lg:col-span-2 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="mb-4 text-base font-semibold text-slate-900">Decomposição do IR projetado</h2>
-          <dl className="space-y-2 text-sm">
-            <Line label="DARF 6015 (RV / FII)" value={darfTotal} hint="Apuração mensal" />
-            <Line label="IR progressivo (pró-labore)" value={irProgressive} hint="Tabela mensal" />
-            <Line label="JCP IRRF (15% definitivo)" value={jcpIrrf} hint="Retido na fonte" />
-            <Line label="IRRF Lei 15.270 (10% > R$ 50k/mês)" value={irrf15270} alert={irrf15270 > 0} hint="Gatilho dividendos" />
-            <Line label="Lei 14.754 (exterior anual)" value={exteriorIr} hint="DAA anual, 15%" />
-            <Line label="IRPFM (Lei 15.270 / tributação mínima)" value={irpfmDue} alert={irpfmDue > 0} hint="Anual em DAA" />
-            <div className="mt-3 border-t border-slate-200 pt-3 flex items-center justify-between">
-              <span className="font-semibold text-slate-900">Total IR 2026</span>
-              <span className="font-mono text-lg font-bold tabular text-slate-900">{formatBRL(totalIr)}</span>
-            </div>
-          </dl>
+          <DecompositionAuditable
+            items={[
+              { kind: "darf_6015", label: "DARF 6015 (RV / FII)", value: darfTotal, hint: "Apuracao mensal" },
+              { kind: "ir_progressivo", label: "IR progressivo (pro-labore)", value: irProgressive, hint: "Tabela mensal" },
+              { kind: "jcp_irrf", label: "JCP IRRF (15% definitivo)", value: jcpIrrf, hint: "Retido na fonte" },
+              { kind: "irrf_lei_15270", label: "IRRF Lei 15.270 (10% > R$ 50k/mes)", value: irrf15270, hint: "Gatilho dividendos", alert: irrf15270 > 0 },
+              { kind: "lei_14754_exterior", label: "Lei 14.754 (exterior anual)", value: exteriorIr, hint: "DAA anual, 15%" },
+              { kind: "irpfm", label: "IRPFM (Lei 15.270 / tributacao minima)", value: irpfmDue, hint: "Anual em DAA", alert: irpfmDue > 0 },
+            ]}
+            total={totalIr}
+            result={result}
+            operations={ops}
+            vehicleId={vehId}
+            year={2026}
+          />
         </div>
 
         {/* Carga efetiva */}
