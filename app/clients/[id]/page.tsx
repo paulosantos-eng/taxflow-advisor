@@ -12,7 +12,8 @@ import { MetricCard } from "@/components/metric-card";
 import { PositionsTable } from "@/components/positions-table";
 import { OpportunityCard } from "@/components/opportunity-card";
 import { DecompositionAuditable } from "@/components/decomposition-auditable";
-import { ArrowLeft, Calculator, Calendar, FileText, User, Building2 } from "lucide-react";
+import { ClientActions } from "@/components/client-actions";
+import { ArrowLeft, Calendar, User, Building2 } from "lucide-react";
 
 export async function generateStaticParams() {
   return CLIENTS.map((c) => ({ id: c.id }));
@@ -100,17 +101,7 @@ export default function ClientPage({ params }: PageProps) {
               </div>
             </div>
           </div>
-          <div className="flex gap-2">
-            <Link
-              href={`/clients/${client.id}/rebalance`}
-              className="inline-flex items-center gap-2 rounded-md bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600"
-            >
-              <Calculator size={16} /> Rebalancear
-            </Link>
-            <button className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
-              <FileText size={16} /> Relatório
-            </button>
-          </div>
+          <ClientActions clientId={client.id} />
         </div>
       </div>
 

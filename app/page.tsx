@@ -1,8 +1,9 @@
+import Link from "next/link";
 import { CLIENTS, getOperationsForClient } from "@/lib/data/mock-clients";
 import { runEngine, formatBRL } from "@/lib/tax-engine/engine";
 import { ClientRow } from "@/components/client-row";
 import { MetricCard } from "@/components/metric-card";
-import { AlertTriangle, CheckCircle, AlertCircle, TrendingUp } from "lucide-react";
+import { AlertTriangle, CheckCircle, AlertCircle, TrendingUp, UserPlus } from "lucide-react";
 
 interface ClientSummary {
   id: string;
@@ -72,6 +73,12 @@ export default function DashboardPage() {
             Visão consolidada da base de clientes • {new Date().toLocaleDateString("pt-BR")}
           </p>
         </div>
+        <Link
+          href="/clients/new"
+          className="inline-flex items-center gap-2 rounded-md bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600"
+        >
+          <UserPlus size={16} /> Novo cliente
+        </Link>
       </div>
 
       {/* ALERTAS HOJE */}
