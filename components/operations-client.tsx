@@ -115,6 +115,7 @@ function operationGuidance(type: OperationType, isForeign: boolean): string {
 
 export function OperationsClient({ clientId }: { clientId: string }) {
   const router = useRouter();
+  const [loaded, setLoaded] = useState(false);
   const [client, setClient] = useState<Client | null>(null);
   const [operations, setOperations] = useState<Operation[]>([]);
   const [assetCode, setAssetCode] = useState(ASSET_CATALOG[0].code);
@@ -131,6 +132,7 @@ export function OperationsClient({ clientId }: { clientId: string }) {
   useEffect(() => {
     setClient(getRuntimeClient(clientId) ?? null);
     setOperations(getCustomOperations(clientId));
+    setLoaded(true);
   }, [clientId]);
 
   const vehicle = client ? getPrimaryVehicle(client) : undefined;
@@ -198,6 +200,14 @@ export function OperationsClient({ clientId }: { clientId: string }) {
     setSaved(true);
     setTimeout(() => setSaved(false), 1800);
   };
+
+  if (!loaded) {
+    return (
+      <div className="rounded-lg border border-slate-200 bg-white p-6 text-sm text-slate-500 shadow-sm">
+        Carregando operações...
+      </div>
+    );
+  }
 
   if (!client) {
     return (
