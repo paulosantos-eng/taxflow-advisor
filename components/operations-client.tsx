@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, Info, Save, Trash2 } from "lucide-react";
 import { ASSET_CATALOG, getAssetByCode } from "@/lib/data/asset-catalog";
 import {
   getPrimaryVehicle,
@@ -22,13 +22,16 @@ import type { Client, Operation, OperationType } from "@/lib/tax-engine/types";
 const OPERATION_TYPES: Array<{ value: OperationType; label: string }> = [
   { value: "compra", label: "Compra" },
   { value: "venda_swing", label: "Venda swing" },
+  { value: "venda_day", label: "Venda day trade" },
   { value: "rendimento_fii", label: "Rendimento FII" },
   { value: "cupom_rf", label: "Cupom RF" },
+  { value: "vencimento_rf", label: "Vencimento RF" },
   { value: "dividendo", label: "Dividendo" },
   { value: "jcp", label: "JCP" },
   { value: "aplicacao_fundo", label: "Aplicação em fundo" },
   { value: "resgate_fundo", label: "Resgate de fundo" },
   { value: "come_cotas", label: "Come-cotas" },
+  { value: "distribuicao_fip", label: "Distribuição FIP" },
 ];
 
 function operationLabel(type: OperationType): string {
@@ -47,6 +50,67 @@ function formatOperationValue(value: number, currency: string): string {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(value);
+}
+
+function assetClassLabel(assetClass: string): string {
+  const labels: Record<string, string> = {
+    acao_br: "Ação brasileira",
+    etf_rv_br: "ETF de renda variável BR",
+    etf_rf_br: "ETF de renda fixa BR",
+    fii: "FII",
+    fiagro: "Fiagro",
+    tesouro_selic: "Tesouro Selic",
+    tesouro_pre: "Tesouro Prefixado",
+    tesouro_ipca: "Tesouro IPCA+",
+    cdb: "CDB",
+    lci: "LCI",
+    lca: "LCA",
+    debenture_incentivada: "Debênture incentivada",
+    stock_exterior: "Stock exterior",
+    etf_exterior_acumulacao: "ETF exterior acumulador",
+    etf_exterior_distribuicao: "ETF exterior distribuidor",
+    reit_exterior: "REIT exterior",
+    fundo_multimercado_lp: "Fundo multimercado LP",
+    fundo_rf_lp: "Fundo RF LP",
+    fundo_rf_cp: "Fundo RF CP",
+    fia_aberto: "FIA aberto",
+    fidc: "FIDC",
+    fip_qualificado: "FIP qualificado",
+    fundo_exclusivo: "Fundo exclusivo",
+  };
+  return labels[assetClass] ?? assetClass;
+}
+
+function commonEvents(assetClass: string): string[] {
+  if (assetClass === "acao_br") return ["Compra", "Venda", "Dividendo", "JCP"];
+  if (assetClass === "fii" || assetClass === "fiagro") return ["Compra", "Venda", "Rendimento"];
+  if (assetClass.startsWith("tesouro") || assetClass === "cdb") return ["Compra", "Venda", "Cupom", "Vencimento"];
+  if (["lci", "lca", "debenture_incentivada"].includes(assetClass)) return ["Compra", "Venda", "Cupom/Vencimento"];
+  if (assetClass.startsWith("etf_exterior") || assetClass === "stock_exterior" || assetClass === "reit_exterior") {
+    return ["Compra", "Venda", "Dividendo", "PTAX"];
+  }
+  if (assetClass.includes("fundo") || assetClass === "fidc") return ["Aplicação", "Resgate", "Come-cotas"];
+  if (assetClass === "fip_qualificado") return ["Aplicação", "Distribuição"];
+  return ["Compra", "Venda"];
+}
+
+function operationGuidance(type: OperationType, isForeign: boolean): string {
+  if (type === "compra" || type === "venda_swing" || type === "venda_day") {
+    return isForeign
+      ? "Informe quantidade, valor em moeda original e PTAX da data. O engine converte para BRL."
+      : "Informe quantidade e valor total. Isso define custo médio e ganho realizado.";
+  }
+  if (type === "dividendo") {
+    return isForeign
+      ? "Dividendo exterior entra na apuração anual da Lei 14.754. Informe PTAX."
+      : "Dividendo brasileiro entra na base ampla do IRPFM e pode acionar Lei 15.270 por fonte.";
+  }
+  if (type === "jcp") return "JCP tem IRRF de 15% definitivo e entra como imposto já pago.";
+  if (type === "rendimento_fii") return "Rendimento de FII/Fiagro pode ser isento se cumprir os requisitos legais.";
+  if (type === "cupom_rf" || type === "vencimento_rf") return "Renda fixa tributada sofre retenção; isentos seguem como renda isenta na base ampla.";
+  if (type === "come_cotas") return "Use o rendimento do período. O engine aplica a alíquota de come-cotas da classe.";
+  if (type === "distribuicao_fip") return "FIP qualificado usa alíquota de 15% na distribuição no MVP.";
+  return "Preencha o valor financeiro do evento.";
 }
 
 export function OperationsClient({ clientId }: { clientId: string }) {
@@ -256,6 +320,32 @@ export function OperationsClient({ clientId }: { clientId: string }) {
               onChange={(event) => setQty(event.target.value)}
               className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
             />
+          </div>
+        </div>
+
+        <div className="mt-4 rounded-md border border-brand-200 bg-brand-50/30 p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2 font-semibold text-brand-900">
+                <Info size={16} /> Ativo selecionado
+              </div>
+              <p className="mt-1 text-sm text-slate-600">
+                {selectedAsset.code} - {assetClassLabel(selectedAsset.class)} • moeda {selectedAsset.currency}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {commonEvents(selectedAsset.class).map((event) => (
+                <span
+                  key={event}
+                  className="rounded-full bg-white px-2 py-1 text-xs font-medium text-brand-900 ring-1 ring-brand-200"
+                >
+                  {event}
+                </span>
+              ))}
+            </div>
+          </div>
+          <div className="mt-3 rounded-md bg-white p-3 text-xs leading-5 text-slate-600 ring-1 ring-brand-100">
+            {operationGuidance(type, isForeign)}
           </div>
         </div>
 

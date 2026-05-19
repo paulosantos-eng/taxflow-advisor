@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowLeft, Building2, Calendar, User } from "lucide-react";
 import { ClientActions } from "@/components/client-actions";
 import { ClientFlowGuide } from "@/components/client-flow-guide";
+import { DataQualityPanel } from "@/components/data-quality-panel";
 import { DecompositionAuditable } from "@/components/decomposition-auditable";
 import { MetricCard } from "@/components/metric-card";
 import { OpportunityCard } from "@/components/opportunity-card";
@@ -38,10 +39,12 @@ interface ClientDetailState {
 }
 
 const YEAR = 2026;
+type DetailTab = "resumo" | "carteira" | "impostos" | "oportunidades" | "calendario";
 
 export function ClientDetailClient({ clientId }: Props) {
   const [loaded, setLoaded] = useState(false);
   const [state, setState] = useState<ClientDetailState | null>(null);
+  const [activeTab, setActiveTab] = useState<DetailTab>("resumo");
 
   useEffect(() => {
     const client = getRuntimeClient(clientId);
@@ -131,6 +134,13 @@ export function ClientDetailClient({ clientId }: Props) {
   const gainHint =
     costAum > 0 ? `+${((unrealizedGain / costAum) * 100).toFixed(1)}% sobre custo` : "sem posições";
   const effectiveTax = marketAum > 0 ? ((totalIr / marketAum) * 100).toFixed(2) : "0,00";
+  const tabs: Array<{ id: DetailTab; label: string; count?: number }> = [
+    { id: "resumo", label: "Resumo" },
+    { id: "carteira", label: "Carteira", count: positions.length },
+    { id: "impostos", label: "Impostos" },
+    { id: "oportunidades", label: "Oportunidades", count: opportunities.length },
+    { id: "calendario", label: "Calendário", count: events.length },
+  ];
 
   return (
     <div className="space-y-6">
@@ -225,137 +235,215 @@ export function ClientDetailClient({ clientId }: Props) {
         eventsCount={events.length}
       />
 
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold text-slate-900">Posições detalhadas</h2>
-          <div className="text-xs text-slate-500">
-            {positions.length} ativos • clique no grupo para expandir/recolher
-          </div>
-        </div>
-        {positions.length > 0 ? (
-          <PositionsTable positions={positions} />
-        ) : (
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-dashed border-slate-300 bg-white p-6 text-sm text-slate-500">
-            <span>
-              Sem posições financeiras cadastradas. Use os inputs mensais para pró-labore e
-              dividendos, ou carregue uma carteira modelo em Operações.
-            </span>
-            <Link
-              href={`/clients/${client.id}/operations`}
-              className="rounded-md bg-brand-500 px-3 py-2 text-sm font-medium text-white hover:bg-brand-600"
+      <div className="rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
+        <div className="flex flex-wrap gap-1">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium ${
+                activeTab === tab.id
+                  ? "bg-ink-950 text-white"
+                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+              }`}
             >
-              Carregar carteira
-            </Link>
-          </div>
-        )}
+              {tab.label}
+              {tab.count !== undefined && (
+                <span
+                  className={`rounded-full px-1.5 py-0.5 text-[10px] ${
+                    activeTab === tab.id ? "bg-white/15 text-white" : "bg-slate-100 text-slate-500"
+                  }`}
+                >
+                  {tab.count}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm lg:col-span-2">
-          <h2 className="mb-4 text-base font-semibold text-slate-900">Decomposição do IR projetado</h2>
-          <DecompositionAuditable
-            items={[
-              { kind: "darf_6015", label: "DARF 6015 (RV / FII)", value: darfTotal, hint: "Apuração mensal" },
-              { kind: "ir_progressivo", label: "IR progressivo (pró-labore)", value: irProgressive, hint: "Tabela mensal" },
-              { kind: "jcp_irrf", label: "JCP IRRF (15% definitivo)", value: jcpIrrf, hint: "Retido na fonte" },
-              { kind: "irrf_lei_15270", label: "IRRF Lei 15.270 (10% > R$ 50k/mês)", value: irrf15270, hint: "Gatilho dividendos", alert: irrf15270 > 0 },
-              { kind: "lei_14754_exterior", label: "Lei 14.754 (exterior anual)", value: exteriorIr, hint: "DAA anual, 15%" },
-              { kind: "irpfm", label: "IRPFM (Lei 15.270 / tributação mínima)", value: irpfmDue, hint: "Anual em DAA", alert: irpfmDue > 0 },
-            ]}
-            total={totalIr}
-            result={result}
-            operations={operations}
-            vehicleId={vehicle.id}
-            year={YEAR}
-          />
+      {activeTab === "resumo" && (
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+            <DataQualityPanel clientId={client.id} operations={operations} />
+          </div>
+          <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 className="font-semibold text-slate-900">Próxima melhor ação</h2>
+            <div className="mt-4 space-y-3 text-sm leading-5 text-slate-600">
+              {positions.length === 0 ? (
+                <p>Carregue uma carteira modelo ou lance operações para liberar diagnóstico e plano.</p>
+              ) : opportunities.some((item) => item.severity === "high") ? (
+                <p>Revise os alertas críticos antes de apresentar o plano ao cliente.</p>
+              ) : totalIr > 0 ? (
+                <p>Abra o rebalanceador para comparar imposto atual, proposta e custo fiscal por operação.</p>
+              ) : (
+                <p>Revise os dados de renda e rendimentos para confirmar se não há imposto projetado.</p>
+              )}
+              <div className="rounded-md bg-slate-50 p-3">
+                <div className="text-xs uppercase tracking-wide text-slate-500">Resumo fiscal</div>
+                <div className="mt-1 font-mono text-lg font-semibold text-warn-500">
+                  {formatBRL(totalIr)}
+                </div>
+                <div className="text-xs text-slate-500">IR projetado em 2026</div>
+              </div>
+            </div>
+            <div className="mt-4 grid grid-cols-1 gap-2">
+              <Link
+                href={`/clients/${client.id}/rebalance`}
+                className="rounded-md bg-success-500 px-3 py-2 text-center text-sm font-medium text-white hover:bg-success-600"
+              >
+                Abrir plano tax-aware
+              </Link>
+              <Link
+                href={`/clients/${client.id}/report`}
+                className="rounded-md border border-slate-200 px-3 py-2 text-center text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                Ver relatório executivo
+              </Link>
+            </div>
+          </div>
         </div>
+      )}
 
+      {activeTab === "carteira" && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-semibold text-slate-900">Posições detalhadas</h2>
+            <div className="text-xs text-slate-500">
+              {positions.length} ativos • clique no grupo para expandir/recolher
+            </div>
+          </div>
+          {positions.length > 0 ? (
+            <PositionsTable positions={positions} />
+          ) : (
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-dashed border-slate-300 bg-white p-6 text-sm text-slate-500">
+              <span>
+                Sem posições financeiras cadastradas. Use os inputs mensais para pró-labore e
+                dividendos, ou carregue uma carteira modelo em Operações.
+              </span>
+              <Link
+                href={`/clients/${client.id}/operations`}
+                className="rounded-md bg-brand-500 px-3 py-2 text-sm font-medium text-white hover:bg-brand-600"
+              >
+                Carregar carteira
+              </Link>
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === "impostos" && (
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm lg:col-span-2">
+            <h2 className="mb-4 text-base font-semibold text-slate-900">Decomposição do IR projetado</h2>
+            <DecompositionAuditable
+              items={[
+                { kind: "darf_6015", label: "DARF 6015 (RV / FII)", value: darfTotal, hint: "Apuração mensal" },
+                { kind: "ir_progressivo", label: "IR progressivo (pró-labore)", value: irProgressive, hint: "Tabela mensal" },
+                { kind: "jcp_irrf", label: "JCP IRRF (15% definitivo)", value: jcpIrrf, hint: "Retido na fonte" },
+                { kind: "irrf_lei_15270", label: "IRRF Lei 15.270 (10% > R$ 50k/mês)", value: irrf15270, hint: "Gatilho dividendos", alert: irrf15270 > 0 },
+                { kind: "lei_14754_exterior", label: "Lei 14.754 (exterior anual)", value: exteriorIr, hint: "DAA anual, 15%" },
+                { kind: "irpfm", label: "IRPFM (Lei 15.270 / tributação mínima)", value: irpfmDue, hint: "Anual em DAA", alert: irpfmDue > 0 },
+              ]}
+              total={totalIr}
+              result={result}
+              operations={operations}
+              vehicleId={vehicle.id}
+              year={YEAR}
+            />
+          </div>
+
+          <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 className="mb-4 text-base font-semibold text-slate-900">Carga efetiva</h2>
+            <div className="space-y-4">
+              <div>
+                <div className="text-xs uppercase tracking-wide text-slate-500">% do patrimônio</div>
+                <div className="mt-1 font-mono text-2xl font-bold tabular text-slate-900">
+                  {effectiveTax}%
+                </div>
+                <div className="text-xs text-slate-400">IR / patrimônio a mercado</div>
+              </div>
+              <div className="border-t border-slate-200 pt-3">
+                <div className="text-xs uppercase tracking-wide text-slate-500">
+                  Carga 5 anos (projetada)
+                </div>
+                <div className="mt-1 font-mono text-2xl font-bold tabular text-warn-500">
+                  {formatBRL(totalIr * 5)}
+                </div>
+                <div className="text-xs text-slate-400">Sem rebalanceamento</div>
+              </div>
+              <Link
+                href={`/clients/${client.id}/rebalance`}
+                className="block rounded-md bg-success-500 px-3 py-2 text-center text-sm font-medium text-white hover:bg-success-600"
+              >
+                Ver como reduzir →
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === "oportunidades" && (
         <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="mb-4 text-base font-semibold text-slate-900">Carga efetiva</h2>
-          <div className="space-y-4">
-            <div>
-              <div className="text-xs uppercase tracking-wide text-slate-500">% do patrimônio</div>
-              <div className="mt-1 font-mono text-2xl font-bold tabular text-slate-900">
-                {effectiveTax}%
-              </div>
-              <div className="text-xs text-slate-400">IR / patrimônio a mercado</div>
+          <h2 className="mb-4 text-base font-semibold text-slate-900">
+            Oportunidades identificadas pelo engine
+          </h2>
+          {opportunities.length > 0 ? (
+            <div className="space-y-3">
+              {opportunities.map((opportunity) => (
+                <OpportunityCard key={opportunity.id} opp={opportunity} />
+              ))}
             </div>
-            <div className="border-t border-slate-200 pt-3">
-              <div className="text-xs uppercase tracking-wide text-slate-500">
-                Carga 5 anos (projetada)
-              </div>
-              <div className="mt-1 font-mono text-2xl font-bold tabular text-warn-500">
-                {formatBRL(totalIr * 5)}
-              </div>
-              <div className="text-xs text-slate-400">Sem rebalanceamento</div>
-            </div>
-            <Link
-              href={`/clients/${client.id}/rebalance`}
-              className="block rounded-md bg-success-500 px-3 py-2 text-center text-sm font-medium text-white hover:bg-success-600"
-            >
-              Ver como reduzir →
-            </Link>
-          </div>
+          ) : (
+            <p className="text-sm text-slate-500">
+              Sem oportunidades detectadas com os dados atuais.
+            </p>
+          )}
         </div>
-      </div>
+      )}
 
-      <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-        <h2 className="mb-4 text-base font-semibold text-slate-900">
-          Oportunidades identificadas pelo engine
-        </h2>
-        {opportunities.length > 0 ? (
-          <div className="space-y-3">
-            {opportunities.map((opportunity) => (
-              <OpportunityCard key={opportunity.id} opp={opportunity} />
-            ))}
+      {activeTab === "calendario" && (
+        <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="mb-4 flex items-center gap-2">
+            <Calendar size={18} className="text-brand-900" />
+            <h2 className="text-base font-semibold text-slate-900">Calendário fiscal 2026</h2>
           </div>
-        ) : (
-          <p className="text-sm text-slate-500">
-            Sem oportunidades detectadas com os dados atuais.
-          </p>
-        )}
-      </div>
-
-      <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="mb-4 flex items-center gap-2">
-          <Calendar size={18} className="text-brand-900" />
-          <h2 className="text-base font-semibold text-slate-900">Calendário fiscal 2026</h2>
-        </div>
-        {events.length === 0 ? (
-          <p className="text-sm text-slate-500">Sem eventos fiscais pendentes.</p>
-        ) : (
-          <ul className="divide-y divide-slate-100">
-            {events.map((event) => (
-              <li key={event.id} className="flex items-center justify-between py-3 text-sm">
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`flex h-9 w-9 items-center justify-center rounded-md ${
-                      event.kind === "darf"
-                        ? "bg-blue-50 text-brand-900"
-                        : event.kind === "trigger"
-                          ? "bg-red-50 text-danger-500"
-                          : "bg-slate-100 text-slate-600"
-                    }`}
-                  >
-                    <Calendar size={16} />
-                  </div>
-                  <div>
-                    <div className="font-medium text-slate-900">{event.description}</div>
-                    <div className="text-xs text-slate-500">
-                      {new Date(event.date).toLocaleDateString("pt-BR")}
+          {events.length === 0 ? (
+            <p className="text-sm text-slate-500">Sem eventos fiscais pendentes.</p>
+          ) : (
+            <ul className="divide-y divide-slate-100">
+              {events.map((event) => (
+                <li key={event.id} className="flex items-center justify-between py-3 text-sm">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`flex h-9 w-9 items-center justify-center rounded-md ${
+                        event.kind === "darf"
+                          ? "bg-blue-50 text-brand-900"
+                          : event.kind === "trigger"
+                            ? "bg-red-50 text-danger-500"
+                            : "bg-slate-100 text-slate-600"
+                      }`}
+                    >
+                      <Calendar size={16} />
+                    </div>
+                    <div>
+                      <div className="font-medium text-slate-900">{event.description}</div>
+                      <div className="text-xs text-slate-500">
+                        {new Date(event.date).toLocaleDateString("pt-BR")}
+                      </div>
                     </div>
                   </div>
-                </div>
-                {event.amount !== undefined && (
-                  <div className="font-mono text-sm font-semibold tabular text-slate-700">
-                    {formatBRL(event.amount)}
-                  </div>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+                  {event.amount !== undefined && (
+                    <div className="font-mono text-sm font-semibold tabular text-slate-700">
+                      {formatBRL(event.amount)}
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
     </div>
   );
 }
