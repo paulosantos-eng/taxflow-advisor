@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Building2, Calendar, User } from "lucide-react";
 import { ClientActions } from "@/components/client-actions";
+import { ClientFlowGuide } from "@/components/client-flow-guide";
 import { DecompositionAuditable } from "@/components/decomposition-auditable";
 import { MetricCard } from "@/components/metric-card";
 import { OpportunityCard } from "@/components/opportunity-card";
@@ -214,6 +215,15 @@ export function ClientDetailClient({ clientId }: Props) {
           emphasis="danger"
         />
       </div>
+
+      <ClientFlowGuide
+        clientId={client.id}
+        positionsCount={positions.length}
+        operationsCount={operations.length}
+        totalIr={totalIr}
+        opportunitiesCount={opportunities.length}
+        eventsCount={events.length}
+      />
 
       <div className="space-y-3">
         <div className="flex items-center justify-between">

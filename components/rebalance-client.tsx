@@ -318,6 +318,8 @@ export function RebalanceClient({ clientId }: Props) {
         proposedOutOfPolicy={proposedOutOfPolicy.length}
       />
 
+      <AllocationComparisonChart proposed={proposed} />
+
       <OptimizerPanel result={optimize({ result, vehicleId: vehicle.id, year: YEAR })} />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -575,6 +577,81 @@ function PolicyPanel({
         <span className="inline-flex items-center gap-1">
           <span className="h-3 w-6 rounded bg-brand-100" /> Faixa permitida
         </span>
+      </div>
+    </div>
+  );
+}
+
+function AllocationComparisonChart({ proposed }: { proposed: ProposedAllocation[] }) {
+  const rows = proposed.filter(
+    (item) => item.totalBrl > 0 || item.targetBrl > 0 || Math.abs(item.delta) > 100,
+  );
+
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="font-semibold text-slate-900">Mapa visual do rebalanceamento</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            A barra cinza mostra a carteira atual. A barra verde mostra o alvo proposto depois da
+            otimização tributária e do limite de perfil.
+          </p>
+        </div>
+        <div className="flex gap-4 text-xs text-slate-500">
+          <span className="inline-flex items-center gap-1">
+            <span className="h-2 w-5 rounded bg-slate-300" /> Atual
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <span className="h-2 w-5 rounded bg-success-500" /> Alvo
+          </span>
+        </div>
+      </div>
+
+      <div className="mt-5 space-y-5">
+        {rows.map((item) => {
+          const deltaTone =
+            item.delta < -100
+              ? "text-danger-500"
+              : item.delta > 100
+                ? "text-success-500"
+                : "text-slate-500";
+
+          return (
+            <div key={item.classLabel} className="grid grid-cols-1 gap-2 lg:grid-cols-[150px_1fr_180px] lg:items-center">
+              <div>
+                <div className="text-sm font-medium text-slate-800">{item.classLabel}</div>
+                <div className={`mt-0.5 font-mono text-xs font-semibold tabular ${deltaTone}`}>
+                  {item.delta >= 0 ? "+" : ""}
+                  {formatBRL(item.delta)}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <ComparisonBar label="Atual" pct={item.pct} color="bg-slate-300" />
+                <ComparisonBar label="Alvo" pct={item.targetPct} color="bg-success-500" />
+              </div>
+
+              <div className="flex justify-between gap-4 font-mono text-xs tabular text-slate-600 lg:justify-end">
+                <span>{formatPercent(item.pct)}</span>
+                <span className="font-semibold text-success-500">{formatPercent(item.targetPct)}</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function ComparisonBar({ label, pct, color }: { label: string; pct: number; color: string }) {
+  return (
+    <div className="grid grid-cols-[40px_1fr] items-center gap-2">
+      <div className="text-[11px] uppercase tracking-wide text-slate-400">{label}</div>
+      <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
+        <div
+          className={`h-full rounded-full ${color}`}
+          style={{ width: `${Math.min(100, Math.max(0, pct * 100))}%` }}
+        />
       </div>
     </div>
   );

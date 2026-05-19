@@ -39,9 +39,12 @@ export function ClientActions({ clientId }: Props) {
         >
           <Plus size={16} /> Adicionar veiculo
         </button>
-        <button className="inline-flex items-center gap-2 rounded-md border border-ink-200 bg-white px-4 py-2 text-sm font-medium text-ink-700 hover:bg-ink-50">
-          <FileText size={16} /> Relatorio
-        </button>
+        <Link
+          href={`/clients/${clientId}/report`}
+          className="inline-flex items-center gap-2 rounded-md border border-ink-200 bg-white px-4 py-2 text-sm font-medium text-ink-700 hover:bg-ink-50"
+        >
+          <FileText size={16} /> Relatório
+        </Link>
       </div>
 
       <AddVehicleModal
