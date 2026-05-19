@@ -151,6 +151,7 @@ export interface AnnualApuracao {
   irpfmGross: number;
   irpfmDue: number;
   exteriorGainBrl: number;
+  exteriorDividendBrl: number;
   exteriorIrBrl: number;
 }
 

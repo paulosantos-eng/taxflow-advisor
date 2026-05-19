@@ -326,6 +326,7 @@ function explainLei14754(
 ): CalculationExplanation {
   const an = [...result.annual.values()].find((a) => a.vehicleId === vehicleId && a.year === year);
   const ganho = an?.exteriorGainBrl ?? 0;
+  const dividendos = an?.exteriorDividendBrl ?? 0;
   const ir = an?.exteriorIrBrl ?? 0;
 
   const relatedOps: RelatedOperation[] = ops
@@ -351,6 +352,7 @@ function explainLei14754(
       "Ganhos e rendimentos em aplicacoes financeiras no exterior sao tributados anualmente em DAA a aliquota unica de 15%. Variacao cambial NAO e destacada — entra no ganho total em BRL.",
     steps: [
       { label: "Ganho realizado no exterior (em BRL)", value: Math.max(0, ganho) },
+      { label: "Dividendos/rendimentos no exterior (em BRL)", value: Math.max(0, dividendos) },
       { label: "Aliquota unica anual", formula: "15%" },
       { label: "TOTAL IR Lei 14.754", value: ir, isResult: true },
     ],

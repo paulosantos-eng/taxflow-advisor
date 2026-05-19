@@ -88,7 +88,7 @@ export function runEngine(ops: Operation[]): EngineResult {
         vehicleId: vehId, year: y,
         totalIncomeForIrpfm: 0, irPaidInYear: 0,
         irpfmGross: 0, irpfmDue: 0,
-        exteriorGainBrl: 0, exteriorIrBrl: 0,
+        exteriorGainBrl: 0, exteriorDividendBrl: 0, exteriorIrBrl: 0,
       });
     }
     return annual.get(k)!;
@@ -176,6 +176,21 @@ export function runEngine(ops: Operation[]): EngineResult {
       }
       case "dividendo":
       case "distribuicao_pj_propria": {
+        const isExteriorDividend =
+          op.type === "dividendo" &&
+          (
+            op.asset.class === "stock_exterior" ||
+            op.asset.class === "etf_exterior_acumulacao" ||
+            op.asset.class === "etf_exterior_distribuicao" ||
+            op.asset.class === "reit_exterior"
+          );
+
+        if (isExteriorDividend) {
+          const an = getAnnual(op.vehicleId, y);
+          an.exteriorDividendBrl += op.totalValue * (op.ptax ?? 1);
+          break;
+        }
+
         ap.dividends += op.totalValue;
         const opDate = new Date(op.date);
         if (opDate >= Rules.LEI_15270_START && op.payerCnpj) {
@@ -296,6 +311,12 @@ export function runEngine(ops: Operation[]): EngineResult {
                      + ap.fundoFechadoComeCotasIr + ap.fipQualificadoIr;
   }
 
+  // Garante apuração anual também para clientes sem eventos de exterior.
+  // IRPFM depende da base mensal ampla, então pró-labore/dividendos precisam criar ano.
+  for (const m of monthly.values()) {
+    getAnnual(m.vehicleId, m.year);
+  }
+
   // Fecha anuais — IRPFM
   for (const [k, ap] of annual.entries()) {
     let totalIncome = 0;
@@ -309,8 +330,9 @@ export function runEngine(ops: Operation[]): EngineResult {
         + Math.max(0, m.gainFii) + Math.max(0, m.gainDay);
       irPaid += m.totalDarf6015 + m.irProgressive + m.jcpIrrf + m.irrf15270;
     }
-    totalIncome += Math.max(0, ap.exteriorGainBrl);
-    ap.exteriorIrBrl = Math.max(0, ap.exteriorGainBrl) * Rules.ALIQ_LEI_14754;
+    const exteriorTaxableIncome = Math.max(0, ap.exteriorGainBrl) + Math.max(0, ap.exteriorDividendBrl);
+    totalIncome += exteriorTaxableIncome;
+    ap.exteriorIrBrl = exteriorTaxableIncome * Rules.ALIQ_LEI_14754;
     irPaid += ap.exteriorIrBrl;
     ap.totalIncomeForIrpfm = totalIncome;
     ap.irPaidInYear = irPaid;
@@ -398,12 +420,13 @@ export function findOpportunities(
     }
 
     // 4. Exterior
-    if (an.exteriorGainBrl > 5000) {
+    const exteriorIncome = an.exteriorGainBrl + an.exteriorDividendBrl;
+    if (exteriorIncome > 5000) {
       opps.push({
         id: "op_ucits",
         kind: "ucitsMigration",
         title: "Ganho relevante no exterior",
-        description: `${formatBRL(an.exteriorGainBrl)} de ganho via ativos no exterior. Considerar UCITS irlandeses (CSPX/VUSA) para reduzir carga em dividendos (40% → 28% em ETF americano).`,
+        description: `${formatBRL(exteriorIncome)} de ganhos e dividendos no exterior. Considerar UCITS irlandeses (CSPX/VUSA) para reduzir carga em dividendos (40% → 28% em ETF americano).`,
         severity: "info",
       });
     }
@@ -481,10 +504,13 @@ export function computeAllocation(
   vehicleId: string
 ): AllocationItem[] {
   const buckets = new Map<string, number>();
-  for (const pos of result.positions.values()) {
+  for (const [key, pos] of result.positions.entries()) {
+    if (!key.startsWith(vehicleId + "::")) continue;
     if (pos.qty <= 0) continue;
     const label = classLabel(pos.asset);
-    buckets.set(label, (buckets.get(label) ?? 0) + pos.totalCostBrl);
+    const apprec = APPRECIATION[pos.asset.class] ?? 0.05;
+    const currentValue = pos.totalCostBrl * (1 + apprec);
+    buckets.set(label, (buckets.get(label) ?? 0) + currentValue);
   }
   const total = [...buckets.values()].reduce((s, v) => s + v, 0);
   if (total === 0) return [];

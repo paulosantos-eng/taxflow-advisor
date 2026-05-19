@@ -6,7 +6,7 @@ import { Calculator, Users, Calendar, FileText, Settings, BarChart3 } from "luci
 
 const NAV = [
   { href: "/", label: "Clientes", icon: Users },
-  { href: "/calendar", label: "Calendário Fiscal", icon: Calendar, disabled: true },
+  { href: "/calendar", label: "Calendário Fiscal", icon: Calendar },
   { href: "/reports", label: "Relatórios", icon: FileText, disabled: true },
   { href: "/analytics", label: "Analytics", icon: BarChart3, disabled: true },
 ];

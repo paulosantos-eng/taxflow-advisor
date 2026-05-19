@@ -23,7 +23,7 @@ const A = {
   DEB_ELET: { code: "DEB_ELET", name: "Debênture Eletrobras IE", class: "debenture_incentivada", currency: "BRL", isLei12431: true } as Asset,
   IVVB11: { code: "IVVB11", name: "iShares S&P 500", class: "etf_rv_br", currency: "BRL" } as Asset,
   BOVA11: { code: "BOVA11", name: "iShares Bovespa", class: "etf_rv_br", currency: "BRL" } as Asset,
-  VOO: { code: "VOO", name: "Vanguard S&P 500 ETF", class: "etf_exterior_acumulacao", currency: "USD", policy: "acumulacao", origin: "US" } as Asset,
+  VOO: { code: "VOO", name: "Vanguard S&P 500 ETF", class: "etf_exterior_distribuicao", currency: "USD", policy: "distribuicao", origin: "US" } as Asset,
   SCHD: { code: "SCHD", name: "Schwab US Div ETF", class: "etf_exterior_distribuicao", currency: "USD", policy: "distribuicao", origin: "US" } as Asset,
   CSPX: { code: "CSPX", name: "iShares Core S&P 500 UCITS", class: "etf_exterior_acumulacao", currency: "USD", policy: "acumulacao", origin: "IE" } as Asset,
   AAPL: { code: "AAPL", name: "Apple Inc.", class: "stock_exterior", currency: "USD", origin: "US" } as Asset,
@@ -148,7 +148,7 @@ function joaoOperations(): Operation[] {
   ops.push({ id: "j_vsell_wege", vehicleId: v, asset: A.WEGE3, type: "venda_swing", date: "2026-05-10", qty: 400, unitPrice: 55, totalValue: 22000, costs: 11 });
   // Julho — distribuição PJ R$ 50k (no limite, não dispara)
   ops.push({ id: "j_dist_jul", vehicleId: v, asset: PLACEHOLDER_DIST, type: "distribuicao_pj_propria", date: "2026-07-15", totalValue: 50000, payerCnpj: CNPJ_MENDES });
-  ops.push({ id: "j_div_schd_q3", vehicleId: v, asset: A.SCHD, type: "dividendo", date: "2026-07-28", totalValue: 4800, ptax: 5.20, payerCnpj: "SCHD_US" });
+  ops.push({ id: "j_div_voo_q3", vehicleId: v, asset: A.VOO, type: "dividendo", date: "2026-07-28", totalValue: 4800, ptax: 5.20, payerCnpj: "VOO_US" });
   // Setembro — JCP + day trade
   ops.push({ id: "j_jcp_itsa", vehicleId: v, asset: A.ITSA4, type: "jcp", date: "2026-09-20", totalValue: 3500, payerCnpj: "61.532.644/0001-15" });
   ops.push({ id: "j_dt_vale_buy", vehicleId: v, asset: A.VALE3, type: "compra", date: "2026-09-18", qty: 100, unitPrice: 70, totalValue: 7000, costs: 3.5 });
@@ -192,7 +192,10 @@ function marinaOperations(): Operation[] {
   for (let m of [3, 9]) {
     ops.push({ id: `m_cup_deb_${m}`, vehicleId: v, asset: A.DEB_ELET, type: "cupom_rf", date: `2026-${String(m).padStart(2, "0")}-15`, totalValue: 30000 });
   }
-  // Dividendo SCHD-like (do VOO ela não recebe — VOO é acumulação)
+  // Dividendos VOO (ETF americano de distribuição)
+  for (let m of [6, 9, 12]) {
+    ops.push({ id: `m_div_voo_${m}`, vehicleId: v, asset: A.VOO, type: "dividendo", date: `2026-${String(m).padStart(2, "0")}-28`, totalValue: 9000, ptax: 5.25, payerCnpj: "VOO_US" });
+  }
   // Venda parcial AAPL em novembro (ganho exterior)
   ops.push({ id: "m_vsell_aapl", vehicleId: v, asset: A.AAPL, type: "venda_swing", date: "2026-11-20", qty: 300, unitPrice: 250, totalValue: 75000, ptax: 5.30 });
   return ops;

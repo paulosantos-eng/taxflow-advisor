@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Calculator, FileText, Edit3, Plus } from "lucide-react";
+import { Calculator, FileText, Edit3, Plus, ListPlus } from "lucide-react";
 import { AddVehicleModal } from "./add-vehicle-modal";
 
 interface Props {
@@ -26,6 +26,12 @@ export function ClientActions({ clientId }: Props) {
           className="inline-flex items-center gap-2 rounded-md border border-ink-200 bg-white px-4 py-2 text-sm font-medium text-ink-700 hover:bg-ink-50"
         >
           <Edit3 size={16} /> Inputs mensais
+        </Link>
+        <Link
+          href={`/clients/${clientId}/operations`}
+          className="inline-flex items-center gap-2 rounded-md border border-ink-200 bg-white px-4 py-2 text-sm font-medium text-ink-700 hover:bg-ink-50"
+        >
+          <ListPlus size={16} /> Operações
         </Link>
         <button
           onClick={() => setVehicleModalOpen(true)}
